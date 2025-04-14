@@ -615,10 +615,11 @@
         async function generateTexture(prompt) {
             showLoading('Generating texture...');
             try {
-                // In the real implementation, this would use the LLM API
-                // For now, we'll simulate texture generation
+                // Enhance the prompt to specify top-down RPG tile
+                const enhancedPrompt = `Create a seamless tileable texture for a top-down RPG game. This should work as a ${prompt}. The texture should be able to repeat seamlessly when placed next to copies of itself. Make it suitable for a 2D top-down perspective, similar to classic RPGs like Zelda or Final Fantasy.`;
+                
                 const result = await websim.imageGen({
-                    prompt: prompt,
+                    prompt: enhancedPrompt,
                     width: 256,
                     height: 256
                 });
@@ -1266,7 +1267,7 @@
         function showGeneratorModal() {
             if (!gameState.selectedTile || gameState.selectedLayer === undefined) return;
             
-            const { chunkX, chunkY } = gameState.selectedTile;
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
             const chunkKey = `${chunkX},${chunkY}`;
             
             // Check if user has permission to edit this chunk
@@ -1279,11 +1280,10 @@
             document.getElementById('generatorModal').classList.remove('hidden');
             
             // Set a default prompt based on the current terrain type
-            const tileKey = `${tileX},${tileY}`;
             const chunk = room.roomState.chunks[chunkKey];
-            if (chunk && chunk.tiles[tileKey]) {
-                const terrainType = chunk.tiles[tileKey].terrainType || 'grass';
-                document.getElementById('promptInput').value = `${terrainType} texture for a fantasy RPG game`;
+            if (chunk && chunk.tiles[`${tileX},${tileY}`]) {
+                const terrainType = chunk.tiles[`${tileX},${tileY}`].terrainType || 'grass';
+                document.getElementById('promptInput').value = `${terrainType} terrain tile for a top-down RPG game`;
             }
         }
         
@@ -1294,7 +1294,7 @@
                 return;
             }
             
-            // Generate the texture
+            // Generate the texture with enhanced prompt
             const textureUrl = await generateTexture(prompt);
             if (!textureUrl) return;
             
@@ -1632,6 +1632,15 @@
         function gameLoop() {
             if (!isInitialized) return;
             
+            // Center camera on player if in player mode
+            if (gameState.mode === 'player' && room.clientId) {
+                const playerPresence = room.presence[room.clientId];
+                if (playerPresence) {
+                    gameState.camera.x = playerPresence.x || 0;
+                    gameState.camera.y = playerPresence.y || 0;
+                }
+            }
+            
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -1844,7 +1853,7 @@
             showLoading('Generating image from prompt...');
             
             try {
-                // Generate the image
+                // Generate the image with enhanced prompt
                 const imageUrl = await generateTexture(prompt);
                 if (!imageUrl) {
                     hideLoading();
