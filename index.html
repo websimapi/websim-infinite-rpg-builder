@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite RPG Builder</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            width: 100%;
+            background-color: #222;
+            color: #fff;
+        }
+        
+        #gameContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #topBar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #333;
+            border-bottom: 1px solid #555;
+        }
+        
+        #mainContent {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            flex: 1;
+            background-color: #000;
+        }
+        
+        #sidebar {
+            width: 300px;
+            background-color: #333;
+            border-left: 1px solid #555;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-section {
+            padding: 10px;
+            border-bottom: 1px solid #555;
+        }
+        
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: #aaa;
+        }
+        
+        button {
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 4px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        button:hover {
+            background-color: #777;
+        }
+        
+        button.active {
+            background-color: #4CAF50;
+        }
+        
+        .layer-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #444;
+            border-radius: 4px;
+        }
+        
+        .layer-preview {
+            width: 32px;
+            height: 32px;
+            background-color: #222;
+            margin-right: 10px;
+            border: 1px solid #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #statusBar {
+            padding: 5px 10px;
+            background-color: #333;
+            border-top: 1px solid #555;
+            font-size: 14px;
+        }
+        
+        #permissionsPanel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #333;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            min-width: 400px;
+        }
+        
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .tile-property {
+            margin: 5px 0;
+        }
+        
+        #loadingIndicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        #playersPanel {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .player-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            margin: 3px 0;
+            background-color: #444;
+            border-radius: 4px;
+        }
+        
+        .player-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        #generatorModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #333;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            width: 500px;
+        }
+        
+        #promptInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #444;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+        }
+        
+        #generatedPreview {
+            width: 100%;
+            height: 256px;
+            background-color: #222;
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #555;
+        }
+        
+        #generatedPreview img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="topBar">
+            <div id="modeToggle">
+                <button id="godModeBtn" class="active">God Mode</button>
+                <button id="playerModeBtn">Player Mode</button>
+            </div>
+            <div id="actions">
+                <button id="permissionsBtn">Permissions</button>
+                <button id="saveWorldBtn">Save World</button>
+            </div>
+        </div>
+        
+        <div id="mainContent">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="sidebar">
+                <div class="sidebar-section" id="tileInfoSection">
+                    <h3>Tile Information</h3>
+                    <div id="tileCoords">X: 0, Y: 0</div>
+                    <div id="chunkCoords">Chunk: 0, 0</div>
+                    <div id="tileOwner">Owner: None</div>
+                </div>
+                
+                <div class="sidebar-section" id="tilePropertiesSection">
+                    <h3>Tile Properties</h3>
+                    <div class="tile-property">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="walkableCheckbox">
+                            Walkable
+                        </label>
+                    </div>
+                    <div class="tile-property">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="solidCheckbox">
+                            Solid
+                        </label>
+                    </div>
+                    <div class="tile-property">
+                        <label>Terrain Type:
+                            <select id="terrainType">
+                                <option value="grass">Grass</option>
+                                <option value="water">Water</option>
+                                <option value="mountain">Mountain</option>
+                                <option value="forest">Forest</option>
+                                <option value="sand">Sand</option>
+                                <option value="snow">Snow</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section" id="layersSection">
+                    <h3>Tile Layers</h3>
+                    <div id="layersList"></div>
+                    <div id="layerButtons">
+                        <button id="addLayerBtn">Add Layer</button>
+                        <button id="removeLayerBtn">Remove Layer</button>
+                        <button id="moveUpBtn">Move Up</button>
+                        <button id="moveDownBtn">Move Down</button>
+                        <button id="generateTextureBtn">Generate Texture</button>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section" id="playersSection">
+                    <h3>Players</h3>
+                    <div id="playersPanel"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="statusBar">
+            <span id="positionInfo">Position: 0, 0</span> | 
+            <span id="modeInfo">Mode: God</span> | 
+            <span id="playersInfo">Players: 1</span>
+        </div>
+    </div>
+    
+    <div id="permissionsPanel" class="hidden">
+        <h2>Chunk Permissions</h2>
+        <div id="chunkPermissionsInfo">
+            <p>Chunk: <span id="permChunkCoords">0, 0</span></p>
+            <p>Owner: <span id="permChunkOwner">None</span></p>
+        </div>
+        <div id="permissionsList"></div>
+        <div id="permissionsButtons">
+            <button id="claimChunkBtn">Claim Chunk</button>
+            <button id="addPlayerPermBtn">Add Player</button>
+            <button id="removePlayerPermBtn">Remove Player</button>
+            <button id="closePermissionsBtn">Close</button>
+        </div>
+    </div>
+    
+    <div id="generatorModal" class="hidden">
+        <h2>Generate Texture</h2>
+        <input type="text" id="promptInput" placeholder="Describe the texture you want to generate...">
+        <div id="generatedPreview">
+            <p>Preview will appear here</p>
+        </div>
+        <button id="generateBtn">Generate</button>
+        <button id="applyTextureBtn">Apply to Layer</button>
+        <button id="cancelGenerateBtn">Cancel</button>
+    </div>
+    
+    <div id="overlay" class="hidden"></div>
+    <div id="loadingIndicator" class="hidden">Loading...</div>
+
+    <script>
+        // Create WebsimSocket instance for multiplayer
+        const room = new WebsimSocket();
+        let gameState = {
+            mode: 'god', // 'god' or 'player'
+            chunks: {},
+            selectedTile: null,
+            selectedLayer: 0,
+            players: {},
+            camera: { x: 0, y: 0, zoom: 1 },
+            generatedTexture: null,
+            tileSize: 32,
+            chunkSize: 16, // 16x16 tiles per chunk
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let isInitialized = false;
+        
+        // Initialize WebsimSocket and game
+        async function initGame() {
+            showLoading('Connecting to server...');
+            try {
+                await room.initialize();
+                
+                // Subscribe to presence updates (player positions, etc)
+                room.subscribePresence((presence) => {
+                    updatePlayers();
+                });
+                
+                // Subscribe to room state updates (chunks, world data)
+                room.subscribeRoomState((roomState) => {
+                    updateWorld(roomState);
+                });
+                
+                // Handle message events
+                room.onmessage = (event) => {
+                    handleMessage(event.data);
+                };
+                
+                // Initialize player presence
+                room.updatePresence({
+                    x: 0,
+                    y: 0,
+                    mode: 'god',
+                    selectedChunk: { x: 0, y: 0 },
+                });
+                
+                // If room state is empty, initialize it
+                if (!room.roomState.chunks) {
+                    initializeWorld();
+                }
+                
+                updatePlayers();
+                setupEventListeners();
+                resizeCanvas();
+                isInitialized = true;
+                hideLoading();
+                startGameLoop();
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                showError('Failed to connect to server. Please refresh the page.');
+            }
+        }
+        
+        function initializeWorld() {
+            // Initialize an empty world if none exists
+            room.updateRoomState({
+                chunks: {},
+                permissions: {},
+            });
+            
+            // Generate initial chunk at 0,0
+            generateChunk(0, 0);
+        }
+        
+        function generateChunk(chunkX, chunkY) {
+            const chunkKey = `${chunkX},${chunkY}`;
+            const chunk = {
+                owner: room.clientId,
+                tiles: {},
+            };
+            
+            // Generate basic tiles
+            for (let x = 0; x < gameState.chunkSize; x++) {
+                for (let y = 0; y < gameState.chunkSize; y++) {
+                    const tileKey = `${x},${y}`;
+                    chunk.tiles[tileKey] = {
+                        walkable: true,
+                        solid: false,
+                        terrainType: 'grass',
+                        layers: [
+                            {
+                                type: 'terrain',
+                                textureUrl: '', // Will be procedurally generated
+                                opacity: 1.0,
+                                visible: true
+                            }
+                        ]
+                    };
+                }
+            }
+            
+            // Update room state with the new chunk
+            const chunks = {...room.roomState.chunks};
+            chunks[chunkKey] = chunk;
+            room.updateRoomState({ chunks });
+            
+            // Initialize permissions for this chunk
+            const permissions = {...room.roomState.permissions};
+            permissions[chunkKey] = {
+                owner: room.clientId,
+                allowedPlayers: {}
+            };
+            room.updateRoomState({ permissions });
+            
+            // Generate basic textures for the chunk
+            generateTexturesForChunk(chunkX, chunkY);
+        }
+        
+        async function generateTexturesForChunk(chunkX, chunkY) {
+            // This would normally use the LLM to generate textures
+            // For now, we'll use placeholder colors based on terrain type
+            const chunkKey = `${chunkX},${chunkY}`;
+            const chunk = room.roomState.chunks[chunkKey];
+            
+            if (!chunk) return;
+            
+            const updatedTiles = {...chunk.tiles};
+            
+            for (const tileKey in chunk.tiles) {
+                const tile = chunk.tiles[tileKey];
+                if (tile.layers && tile.layers[0]) {
+                    // We'll provide a placeholder for now
+                    // In the real implementation, we'd use the LLM to generate textures
+                    const [x, y] = tileKey.split(',').map(Number);
+                    
+                    // Create SVG placeholder
+                    const terrainColors = {
+                        'grass': '#4CAF50',
+                        'water': '#2196F3',
+                        'mountain': '#795548',
+                        'forest': '#388E3C',
+                        'sand': '#FFC107',
+                        'snow': '#ECEFF1'
+                    };
+                    
+                    const color = terrainColors[tile.terrainType] || '#888888';
+                    const svgData = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+                        <rect width="32" height="32" fill="${color}" />
+                        <text x="16" y="20" font-size="8" text-anchor="middle" fill="rgba(0,0,0,0.5)">
+                            ${x},${y}
+                        </text>
+                    </svg>`;
+                    
+                    const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData);
+                    
+                    // Update the layer with the texture
+                    const layersCopy = [...tile.layers];
+                    layersCopy[0] = {
+                        ...layersCopy[0],
+                        textureUrl: svgUrl
+                    };
+                    
+                    updatedTiles[tileKey] = {
+                        ...tile,
+                        layers: layersCopy
+                    };
+                }
+            }
+            
+            // Update the chunk with the generated textures
+            const chunks = {...room.roomState.chunks};
+            chunks[chunkKey] = {
+                ...chunk,
+                tiles: updatedTiles
+            };
+            
+            room.updateRoomState({ chunks });
+        }
+        
+        async function generateTexture(prompt) {
+            showLoading('Generating texture...');
+            try {
+                // In the real implementation, this would use the LLM API
+                // For now, we'll simulate texture generation
+                const result = await websim.imageGen({
+                    prompt: prompt,
+                    width: 256,
+                    height: 256
+                });
+                
+                hideLoading();
+                return result.url;
+            } catch (error) {
+                console.error('Failed to generate texture:', error);
+                hideLoading();
+                showError('Failed to generate texture. Please try again.');
+                return null;
+            }
+        }
+        
+        function updatePlayers() {
+            // Update the local players object from room.peers and room.presence
+            gameState.players = {};
+            
+            for (const clientId in room.peers) {
+                const peer = room.peers[clientId];
+                const presence = room.presence[clientId] || {};
+                
+                gameState.players[clientId] = {
+                    id: clientId,
+                    username: peer.username,
+                    avatarUrl: peer.avatarUrl,
+                    x: presence.x || 0,
+                    y: presence.y || 0,
+                    mode: presence.mode || 'player',
+                    selectedChunk: presence.selectedChunk || { x: 0, y: 0 }
+                };
+            }
+            
+            // Update the players panel in the UI
+            updatePlayersPanel();
+        }
+        
+        function updatePlayersPanel() {
+            const playersPanel = document.getElementById('playersPanel');
+            playersPanel.innerHTML = '';
+            
+            for (const clientId in gameState.players) {
+                const player = gameState.players[clientId];
+                const playerItem = document.createElement('div');
+                playerItem.className = 'player-item';
+                
+                const avatar = document.createElement('img');
+                avatar.className = 'player-avatar';
+                avatar.src = player.avatarUrl || 'default-avatar.png';
+                
+                const info = document.createElement('div');
+                info.textContent = `${player.username} (${player.mode === 'god' ? 'God' : 'Player'})`;
+                
+                playerItem.appendChild(avatar);
+                playerItem.appendChild(info);
+                playersPanel.appendChild(playerItem);
+            }
+            
+            // Update status bar
+            document.getElementById('playersInfo').textContent = `Players: ${Object.keys(gameState.players).length}`;
+        }
+        
+        function updateWorld(roomState) {
+            // Update local state with new world data
+            if (roomState.chunks) {
+                gameState.chunks = roomState.chunks;
+            }
+            
+            // If selected tile is open, refresh its data
+            updateTileInfoPanel();
+        }
+        
+        function updateTileInfoPanel() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            document.getElementById('tileCoords').textContent = `X: ${tileX + chunkX * gameState.chunkSize}, Y: ${tileY + chunkY * gameState.chunkSize}`;
+            document.getElementById('chunkCoords').textContent = `Chunk: ${chunkX}, ${chunkY}`;
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk) return;
+            
+            // Update owner info
+            document.getElementById('tileOwner').textContent = `Owner: ${getPlayerName(chunk.owner) || 'None'}`;
+            
+            // Get the tile
+            const tile = chunk.tiles[tileKey];
+            if (!tile) return;
+            
+            // Update property checkboxes
+            document.getElementById('walkableCheckbox').checked = tile.walkable;
+            document.getElementById('solidCheckbox').checked = tile.solid;
+            document.getElementById('terrainType').value = tile.terrainType || 'grass';
+            
+            // Update layers list
+            updateLayersList(tile.layers || []);
+        }
+        
+        function updateLayersList(layers) {
+            const layersList = document.getElementById('layersList');
+            layersList.innerHTML = '';
+            
+            if (!layers.length) {
+                layersList.innerHTML = '<p>No layers</p>';
+                return;
+            }
+            
+            layers.forEach((layer, index) => {
+                const layerItem = document.createElement('div');
+                layerItem.className = 'layer-item';
+                if (index === gameState.selectedLayer) {
+                    layerItem.className += ' selected';
+                    layerItem.style.border = '2px solid #4CAF50';
+                }
+                
+                const preview = document.createElement('div');
+                preview.className = 'layer-preview';
+                if (layer.textureUrl) {
+                    preview.style.backgroundImage = `url(${layer.textureUrl})`;
+                    preview.style.backgroundSize = 'cover';
+                }
+                
+                const info = document.createElement('div');
+                info.textContent = `Layer ${index + 1}${layer.type ? ` (${layer.type})` : ''}`;
+                
+                layerItem.appendChild(preview);
+                layerItem.appendChild(info);
+                
+                // Add click handler to select layer
+                layerItem.addEventListener('click', () => {
+                    gameState.selectedLayer = index;
+                    updateLayersList(layers);
+                });
+                
+                layersList.appendChild(layerItem);
+            });
+        }
+        
+        function getPlayerName(clientId) {
+            if (!clientId) return 'None';
+            
+            const player = gameState.players[clientId];
+            return player ? player.username : 'Unknown';
+        }
+        
+        function setupEventListeners() {
+            // Canvas event listeners
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('contextmenu', handleCanvasRightClick);
+            
+            // Resize listener
+            window.addEventListener('resize', resizeCanvas);
+            
+            // UI button listeners
+            document.getElementById('godModeBtn').addEventListener('click', () => switchMode('god'));
+            document.getElementById('playerModeBtn').addEventListener('click', () => switchMode('player'));
+            document.getElementById('permissionsBtn').addEventListener('click', showPermissionsPanel);
+            document.getElementById('saveWorldBtn').addEventListener('click', saveWorld);
+            
+            // Tile property listeners
+            document.getElementById('walkableCheckbox').addEventListener('change', updateTileProperty);
+            document.getElementById('solidCheckbox').addEventListener('change', updateTileProperty);
+            document.getElementById('terrainType').addEventListener('change', updateTileProperty);
+            
+            // Layer buttons
+            document.getElementById('addLayerBtn').addEventListener('click', addLayer);
+            document.getElementById('removeLayerBtn').addEventListener('click', removeLayer);
+            document.getElementById('moveUpBtn').addEventListener('click', moveLayerUp);
+            document.getElementById('moveDownBtn').addEventListener('click', moveLayerDown);
+            document.getElementById('generateTextureBtn').addEventListener('click', showGeneratorModal);
+            
+            // Permissions panel
+            document.getElementById('claimChunkBtn').addEventListener('click', claimChunk);
+            document.getElementById('addPlayerPermBtn').addEventListener('click', addPlayerPermission);
+            document.getElementById('removePlayerPermBtn').addEventListener('click', removePlayerPermission);
+            document.getElementById('closePermissionsBtn').addEventListener('click', hidePermissionsPanel);
+            
+            // Generator modal
+            document.getElementById('generateBtn').addEventListener('click', handleGenerateTexture);
+            document.getElementById('applyTextureBtn').addEventListener('click', applyGeneratedTexture);
+            document.getElementById('cancelGenerateBtn').addEventListener('click', hideGeneratorModal);
+            
+            // Keyboard controls
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        
+        function handleKeyDown(e) {
+            const moveAmount = gameState.mode === 'god' ? 32 : 8;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                    movePlayer(0, -moveAmount);
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    movePlayer(0, moveAmount);
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                    movePlayer(-moveAmount, 0);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    movePlayer(moveAmount, 0);
+                    break;
+                case '+':
+                case '=':
+                    gameState.camera.zoom *= 1.1;
+                    break;
+                case '-':
+                case '_':
+                    gameState.camera.zoom *= 0.9;
+                    break;
+                case 'g':
+                    switchMode('god');
+                    break;
+                case 'p':
+                    switchMode('player');
+                    break;
+            }
+        }
+        
+        function movePlayer(dx, dy) {
+            const presence = room.presence[room.clientId] || {};
+            const newX = (presence.x || 0) + dx;
+            const newY = (presence.y || 0) + dy;
+            
+            // Update camera to follow player
+            gameState.camera.x = newX;
+            gameState.camera.y = newY;
+            
+            // Update player position in presence
+            room.updatePresence({
+                x: newX,
+                y: newY
+            });
+            
+            // Update status bar
+            document.getElementById('positionInfo').textContent = `Position: ${newX}, ${newY}`;
+            
+            // Load chunks as needed
+            const chunkX = Math.floor(newX / (gameState.chunkSize * gameState.tileSize));
+            const chunkY = Math.floor(newY / (gameState.chunkSize * gameState.tileSize));
+            
+            ensureChunkExists(chunkX, chunkY);
+            // Also load surrounding chunks
+            ensureChunkExists(chunkX - 1, chunkY);
+            ensureChunkExists(chunkX + 1, chunkY);
+            ensureChunkExists(chunkX, chunkY - 1);
+            ensureChunkExists(chunkX, chunkY + 1);
+        }
+        
+        function ensureChunkExists(chunkX, chunkY) {
+            const chunkKey = `${chunkX},${chunkY}`;
+            if (!room.roomState.chunks[chunkKey]) {
+                generateChunk(chunkX, chunkY);
+            }
+        }
+        
+        function switchMode(mode) {
+            gameState.mode = mode;
+            
+            // Update UI
+            document.getElementById('godModeBtn').classList.toggle('active', mode === 'god');
+            document.getElementById('playerModeBtn').classList.toggle('active', mode === 'player');
+            document.getElementById('modeInfo').textContent = `Mode: ${mode === 'god' ? 'God' : 'Player'}`;
+            
+            // Update presence
+            room.updatePresence({
+                mode: mode
+            });
+            
+            // Show/hide editor UI based on mode
+            document.getElementById('sidebar').style.display = mode === 'god' ? 'flex' : 'none';
+        }
+        
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Convert to world coordinates
+            const worldX = mouseX / gameState.camera.zoom + gameState.camera.x - canvas.width / (2 * gameState.camera.zoom);
+            const worldY = mouseY / gameState.camera.zoom + gameState.camera.y - canvas.height / (2 * gameState.camera.zoom);
+            
+            // Get tile coordinates
+            const tileX = Math.floor(worldX / gameState.tileSize);
+            const tileY = Math.floor(worldY / gameState.tileSize);
+            
+            // Get chunk coordinates
+            const chunkX = Math.floor(tileX / gameState.chunkSize);
+            const chunkY = Math.floor(tileY / gameState.chunkSize);
+            
+            // Get local tile coordinates within the chunk
+            const localTileX = ((tileX % gameState.chunkSize) + gameState.chunkSize) % gameState.chunkSize;
+            const localTileY = ((tileY % gameState.chunkSize) + gameState.chunkSize) % gameState.chunkSize;
+            
+            if (gameState.mode === 'god') {
+                // Select the tile for editing
+                gameState.selectedTile = {
+                    chunkX,
+                    chunkY,
+                    tileX: localTileX,
+                    tileY: localTileY
+                };
+                
+                // Update the presence with selected chunk
+                room.updatePresence({
+                    selectedChunk: { x: chunkX, y: chunkY }
+                });
+                
+                // Update the tile info panel
+                updateTileInfoPanel();
+            } else {
+                // In player mode, handle interaction with the tile
+                handleTileInteraction(chunkX, chunkY, localTileX, localTileY);
+            }
+        }
+        
+        function handleCanvasRightClick(e) {
+            e.preventDefault(); // Prevent context menu
+            
+            if (gameState.mode === 'player') {
+                // Handle alternative interaction in player mode
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Convert to world coordinates and get tile/chunk
+                // ... (similar to handleCanvasClick)
+                
+                // Handle the interaction
+                // For example, show details about the tile
+            }
+        }
+        
+        function handleTileInteraction(chunkX, chunkY, tileX, tileY) {
+            // In player mode, interact with the tile
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk) return;
+            
+            const tile = chunk.tiles[tileKey];
+            if (!tile) return;
+            
+            // Example: If the tile isn't walkable, show a message
+            if (!tile.walkable) {
+                showMessage("You can't walk here!");
+                return;
+            }
+            
+            // Move player to the tile center
+            const centerX = (chunkX * gameState.chunkSize + tileX) * gameState.tileSize + gameState.tileSize/2;
+            const centerY = (chunkY * gameState.chunkSize + tileY) * gameState.tileSize + gameState.tileSize/2;
+            
+            room.updatePresence({
+                x: centerX,
+                y: centerY
+            });
+            
+            // Update camera
+            gameState.camera.x = centerX;
+            gameState.camera.y = centerY;
+        }
+        
+        function updateTileProperty() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const walkable = document.getElementById('walkableCheckbox').checked;
+            const solid = document.getElementById('solidCheckbox').checked;
+            const terrainType = document.getElementById('terrainType').value;
+            
+            // Create updated copy of the chunks object
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            // Update the specific tile
+            updatedTiles[tileKey] = {
+                ...updatedTiles[tileKey],
+                walkable,
+                solid,
+                terrainType
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            // Update room state
+            room.updateRoomState({ chunks });
+        }
+        
+        function addLayer() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const tile = chunk.tiles[tileKey];
+            const layers = tile.layers || [];
+            
+            // Maximum 10 layers
+            if (layers.length >= 10) {
+                showError("Maximum 10 layers per tile.");
+                return;
+            }
+            
+            // Add a new empty layer
+            const newLayer = {
+                type: 'custom',
+                textureUrl: '',
+                opacity: 1.0,
+                visible: true
+            };
+            
+            const updatedLayers = [...layers, newLayer];
+            
+            // Update the room state
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            updatedTiles[tileKey] = {
+                ...tile,
+                layers: updatedLayers
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            room.updateRoomState({ chunks });
+            
+            // Select the new layer
+            gameState.selectedLayer = updatedLayers.length - 1;
+            updateLayersList(updatedLayers);
+        }
+        
+        function removeLayer() {
+            if (!gameState.selectedTile || gameState.selectedLayer === undefined) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const tile = chunk.tiles[tileKey];
+            const layers = tile.layers || [];
+            
+            // Don't remove the last layer
+            if (layers.length <= 1) {
+                showError("Can't remove the last layer.");
+                return;
+            }
+            
+            // Remove the selected layer
+            const updatedLayers = [...layers];
+            updatedLayers.splice(gameState.selectedLayer, 1);
+            
+            // Update the room state
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            updatedTiles[tileKey] = {
+                ...tile,
+                layers: updatedLayers
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            room.updateRoomState({ chunks });
+            
+            // Update selected layer if needed
+            if (gameState.selectedLayer >= updatedLayers.length) {
+                gameState.selectedLayer = updatedLayers.length - 1;
+            }
+            
+            updateLayersList(updatedLayers);
+        }
+        
+        function moveLayerUp() {
+            if (!gameState.selectedTile || gameState.selectedLayer === undefined) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const tile = chunk.tiles[tileKey];
+            const layers = tile.layers || [];
+            
+            // Can't move up if already at top
+            if (gameState.selectedLayer <= 0) return;
+            
+            // Swap layers
+            const updatedLayers = [...layers];
+            const temp = updatedLayers[gameState.selectedLayer];
+            updatedLayers[gameState.selectedLayer] = updatedLayers[gameState.selectedLayer - 1];
+            updatedLayers[gameState.selectedLayer - 1] = temp;
+            
+            // Update the room state
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            updatedTiles[tileKey] = {
+                ...tile,
+                layers: updatedLayers
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            room.updateRoomState({ chunks });
+            
+            // Update selected layer
+            gameState.selectedLayer--;
+            updateLayersList(updatedLayers);
+        }
+        
+        function moveLayerDown() {
+            if (!gameState.selectedTile || gameState.selectedLayer === undefined) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const tile = chunk.tiles[tileKey];
+            const layers = tile.layers || [];
+            
+            // Can't move down if already at bottom
+            if (gameState.selectedLayer >= layers.length - 1) return;
+            
+            // Swap layers
+            const updatedLayers = [...layers];
+            const temp = updatedLayers[gameState.selectedLayer];
+            updatedLayers[gameState.selectedLayer] = updatedLayers[gameState.selectedLayer + 1];
+            updatedLayers[gameState.selectedLayer + 1] = temp;
+            
+            // Update the room state
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            updatedTiles[tileKey] = {
+                ...tile,
+                layers: updatedLayers
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            room.updateRoomState({ chunks });
+            
+            // Update selected layer
+            gameState.selectedLayer++;
+            updateLayersList(updatedLayers);
+        }
+        
+        function showGeneratorModal() {
+            if (!gameState.selectedTile || gameState.selectedLayer === undefined) return;
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('generatorModal').classList.remove('hidden');
+            
+            // Set a default prompt based on the current terrain type
+            const tileKey = `${tileX},${tileY}`;
+            const chunk = room.roomState.chunks[chunkKey];
+            if (chunk && chunk.tiles[tileKey]) {
+                const terrainType = chunk.tiles[tileKey].terrainType || 'grass';
+                document.getElementById('promptInput').value = `${terrainType} texture for a fantasy RPG game`;
+            }
+        }
+        
+        async function handleGenerateTexture() {
+            const prompt = document.getElementById('promptInput').value;
+            if (!prompt) {
+                showError('Please enter a description for your texture.');
+                return;
+            }
+            
+            // Generate the texture
+            const textureUrl = await generateTexture(prompt);
+            if (!textureUrl) return;
+            
+            // Show preview
+            gameState.generatedTexture = textureUrl;
+            const preview = document.getElementById('generatedPreview');
+            preview.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = textureUrl;
+            preview.appendChild(img);
+        }
+        
+        function applyGeneratedTexture() {
+            if (!gameState.selectedTile || gameState.selectedLayer === undefined || !gameState.generatedTexture) {
+                showError('No texture generated or no layer selected.');
+                return;
+            }
+            
+            const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            const tileKey = `${tileX},${tileY}`;
+            
+            // Check if user has permission to edit this chunk
+            if (!hasEditPermission(chunkKey)) {
+                showError("You don't have permission to edit this chunk.");
+                return;
+            }
+            
+            const chunk = room.roomState.chunks[chunkKey];
+            if (!chunk || !chunk.tiles[tileKey]) return;
+            
+            const tile = chunk.tiles[tileKey];
+            const layers = tile.layers || [];
+            
+            if (gameState.selectedLayer >= layers.length) return;
+            
+            // Update the layer with the generated texture
+            const updatedLayers = [...layers];
+            updatedLayers[gameState.selectedLayer] = {
+                ...updatedLayers[gameState.selectedLayer],
+                textureUrl: gameState.generatedTexture
+            };
+            
+            // Update the room state
+            const chunks = {...room.roomState.chunks};
+            const updatedChunk = {...chunk};
+            const updatedTiles = {...updatedChunk.tiles};
+            
+            updatedTiles[tileKey] = {
+                ...tile,
+                layers: updatedLayers
+            };
+            
+            updatedChunk.tiles = updatedTiles;
+            chunks[chunkKey] = updatedChunk;
+            
+            room.updateRoomState({ chunks });
+            
+            // Hide the generator modal
+            hideGeneratorModal();
+            
+            // Update layers list
+            updateLayersList(updatedLayers);
+        }
+        
+        function hideGeneratorModal() {
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('generatorModal').classList.add('hidden');
+        }
+        
+        function showPermissionsPanel() {
+            if (!gameState.selectedTile) {
+                showError('Please select a tile first.');
+                return;
+            }
+            
+            const { chunkX, chunkY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            document.getElementById('permChunkCoords').textContent = `${chunkX}, ${chunkY}`;
+            
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            const owner = permissions ? permissions.owner : null;
+            
+            document.getElementById('permChunkOwner').textContent = getPlayerName(owner);
+            
+            // Update permissions list
+            updatePermissionsList(chunkKey);
+            
+            // Show/hide claim button depending on if chunk is already claimed
+            document.getElementById('claimChunkBtn').style.display = owner ? 'none' : 'inline-block';
+            
+            // Show the panel
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('permissionsPanel').classList.remove('hidden');
+        }
+        
+        function updatePermissionsList(chunkKey) {
+            const permissionsList = document.getElementById('permissionsList');
+            permissionsList.innerHTML = '';
+            
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            if (!permissions || !permissions.allowedPlayers) {
+                permissionsList.innerHTML = '<p>No additional players have permissions.</p>';
+                return;
+            }
+            
+            for (const clientId in permissions.allowedPlayers) {
+                const playerName = getPlayerName(clientId);
+                
+                const playerItem = document.createElement('div');
+                playerItem.className = 'player-item';
+                playerItem.textContent = playerName;
+                playerItem.dataset.clientId = clientId;
+                
+                permissionsList.appendChild(playerItem);
+            }
+        }
+        
+        function hidePermissionsPanel() {
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('permissionsPanel').classList.add('hidden');
+        }
+        
+        function claimChunk() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            // Check if chunk is already claimed
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            if (permissions && permissions.owner) {
+                showError('This chunk is already claimed.');
+                return;
+            }
+            
+            // Claim the chunk
+            const updatedPermissions = {...(room.roomState.permissions || {})};
+            updatedPermissions[chunkKey] = {
+                owner: room.clientId,
+                allowedPlayers: {}
+            };
+            
+            room.updateRoomState({ permissions: updatedPermissions });
+            
+            // Also update the chunk's owner
+            const chunks = {...room.roomState.chunks};
+            if (chunks[chunkKey]) {
+                chunks[chunkKey] = {
+                    ...chunks[chunkKey],
+                    owner: room.clientId
+                };
+                room.updateRoomState({ chunks });
+            }
+            
+            // Update the UI
+            document.getElementById('permChunkOwner').textContent = getPlayerName(room.clientId);
+            document.getElementById('claimChunkBtn').style.display = 'none';
+        }
+        
+        function addPlayerPermission() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            // Check if user owns this chunk
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            if (!permissions || permissions.owner !== room.clientId) {
+                showError("You don't own this chunk.");
+                return;
+            }
+            
+            // Simple implementation: show a prompt to enter player name
+            // In a real app, you'd show a dropdown of available players
+            const playerName = prompt('Enter player name to give permission:');
+            if (!playerName) return;
+            
+            // Find the player by name
+            let targetClientId = null;
+            for (const clientId in gameState.players) {
+                if (gameState.players[clientId].username === playerName) {
+                    targetClientId = clientId;
+                    break;
+                }
+            }
+            
+            if (!targetClientId) {
+                showError('Player not found.');
+                return;
+            }
+            
+            // Add the player to allowed players
+            const updatedPermissions = {...room.roomState.permissions};
+            const chunkPermissions = {...permissions};
+            const allowedPlayers = {...chunkPermissions.allowedPlayers};
+            
+            allowedPlayers[targetClientId] = true;
+            chunkPermissions.allowedPlayers = allowedPlayers;
+            updatedPermissions[chunkKey] = chunkPermissions;
+            
+            room.updateRoomState({ permissions: updatedPermissions });
+            
+            // Update the permissions list
+            updatePermissionsList(chunkKey);
+        }
+        
+        function removePlayerPermission() {
+            if (!gameState.selectedTile) return;
+            
+            const { chunkX, chunkY } = gameState.selectedTile;
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            // Check if user owns this chunk
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            if (!permissions || permissions.owner !== room.clientId) {
+                showError("You don't own this chunk.");
+                return;
+            }
+            
+            // Simple implementation: show a prompt to enter player name
+            // In a real app, you'd select from the permissions list
+            const playerName = prompt('Enter player name to remove permission:');
+            if (!playerName) return;
+            
+            // Find the player by name
+            let targetClientId = null;
+            for (const clientId in gameState.players) {
+                if (gameState.players[clientId].username === playerName) {
+                    targetClientId = clientId;
+                    break;
+                }
+            }
+            
+            if (!targetClientId) {
+                showError('Player not found.');
+                return;
+            }
+            
+            // Remove the player from allowed players
+            const updatedPermissions = {...room.roomState.permissions};
+            const chunkPermissions = {...permissions};
+            const allowedPlayers = {...chunkPermissions.allowedPlayers};
+            
+            delete allowedPlayers[targetClientId];
+            chunkPermissions.allowedPlayers = allowedPlayers;
+            updatedPermissions[chunkKey] = chunkPermissions;
+            
+            room.updateRoomState({ permissions: updatedPermissions });
+            
+            // Update the permissions list
+            updatePermissionsList(chunkKey);
+        }
+        
+        function hasEditPermission(chunkKey) {
+            // Check if the user has permission to edit this chunk
+            const permissions = room.roomState.permissions && room.roomState.permissions[chunkKey];
+            
+            // If there are no permissions yet, anyone can edit
+            if (!permissions) return true;
+            
+            // If the user is the owner, they can edit
+            if (permissions.owner === room.clientId) return true;
+            
+            // If the user is in the allowed players list, they can edit
+            if (permissions.allowedPlayers && permissions.allowedPlayers[room.clientId]) return true;
+            
+            // Otherwise, no edit permission
+            return false;
+        }
+        
+        function saveWorld() {
+            // In a real app, you might want to do additional processing here
+            // But our world is already being saved automatically via room state
+            showMessage('World saved successfully!');
+        }
+        
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'connected':
+                    showMessage(`${data.username} joined the game`);
+                    break;
+                case 'disconnected':
+                    showMessage(`${data.username} left the game`);
+                    break;
+                // Handle other message types as needed
+            }
+        }
+        
+        function showMessage(message) {
+            // Simple implementation - in a real app, you'd have a proper message box
+            const indicator = document.getElementById('loadingIndicator');
+            indicator.textContent = message;
+            indicator.classList.remove('hidden');
+            
+            setTimeout(() => {
+                indicator.classList.add('hidden');
+            }, 3000);
+        }
+        
+        function showError(message) {
+            // Simple implementation - in a real app, you'd have a proper error box
+            const indicator = document.getElementById('loadingIndicator');
+            indicator.textContent = `Error: ${message}`;
+            indicator.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+            indicator.classList.remove('hidden');
+            
+            setTimeout(() => {
+                indicator.classList.add('hidden');
+                indicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            }, 3000);
+        }
+        
+        function showLoading(message) {
+            const indicator = document.getElementById('loadingIndicator');
+            indicator.textContent = message || 'Loading...';
+            indicator.classList.remove('hidden');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingIndicator').classList.add('hidden');
+        }
+        
+        function resizeCanvas() {
+            const container = document.getElementById('gameCanvas');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        
+        function startGameLoop() {
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function gameLoop() {
+            if (!isInitialized) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Save context for camera transformation
+            ctx.save();
+            
+            // Apply camera transform
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(gameState.camera.zoom, gameState.camera.zoom);
+            ctx.translate(-gameState.camera.x, -gameState.camera.y);
+            
+            // Render the world
+            renderWorld();
+            
+            // Render players
+            renderPlayers();
+            
+            // Restore context
+            ctx.restore();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function renderWorld() {
+            // Calculate visible area
+            const cameraLeft = gameState.camera.x - canvas.width / (2 * gameState.camera.zoom);
+            const cameraTop = gameState.camera.y - canvas.height / (2 * gameState.camera.zoom);
+            const cameraRight = gameState.camera.x + canvas.width / (2 * gameState.camera.zoom);
+            const cameraBottom = gameState.camera.y + canvas.height / (2 * gameState.camera.zoom);
+            
+            // Calculate visible chunks
+            const startChunkX = Math.floor(cameraLeft / (gameState.chunkSize * gameState.tileSize));
+            const startChunkY = Math.floor(cameraTop / (gameState.chunkSize * gameState.tileSize));
+            const endChunkX = Math.ceil(cameraRight / (gameState.chunkSize * gameState.tileSize));
+            const endChunkY = Math.ceil(cameraBottom / (gameState.chunkSize * gameState.tileSize));
+            
+            // Render visible chunks
+            for (let chunkX = startChunkX; chunkX <= endChunkX; chunkX++) {
+                for (let chunkY = startChunkY; chunkY <= endChunkY; chunkY++) {
+                    renderChunk(chunkX, chunkY);
+                }
+            }
+            
+            // If a tile is selected, highlight it
+            if (gameState.selectedTile && gameState.mode === 'god') {
+                const { chunkX, chunkY, tileX, tileY } = gameState.selectedTile;
+                const x = (chunkX * gameState.chunkSize + tileX) * gameState.tileSize;
+                const y = (chunkY * gameState.chunkSize + tileY) * gameState.tileSize;
+                
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, gameState.tileSize, gameState.tileSize);
+            }
+        }
+        
+        function renderChunk(chunkX, chunkY) {
+            const chunkKey = `${chunkX},${chunkY}`;
+            const chunk = room.roomState.chunks && room.roomState.chunks[chunkKey];
+            
+            // If chunk doesn't exist, render placeholder
+            if (!chunk) {
+                renderPlaceholderChunk(chunkX, chunkY);
+                return;
+            }
+            
+            // Render all tiles in the chunk
+            for (let tileX = 0; tileX < gameState.chunkSize; tileX++) {
+                for (let tileY = 0; tileY < gameState.chunkSize; tileY++) {
+                    const tileKey = `${tileX},${tileY}`;
+                    const tile = chunk.tiles[tileKey];
+                    
+                    if (!tile) continue;
+                    
+                    const x = (chunkX * gameState.chunkSize + tileX) * gameState.tileSize;
+                    const y = (chunkY * gameState.chunkSize + tileY) * gameState.tileSize;
+                    
+                    // Render the tile layers from bottom to top
+                    if (tile.layers) {
+                        for (const layer of tile.layers) {
+                            if (!layer.visible) continue;
+                            
+                            // Render the layer
+                            if (layer.textureUrl) {
+                                // Create or get cached image
+                                if (!gameState.textureCache) gameState.textureCache = {};
+                                
+                                if (!gameState.textureCache[layer.textureUrl]) {
+                                    const img = new Image();
+                                    img.src = layer.textureUrl;
+                                    gameState.textureCache[layer.textureUrl] = img;
+                                }
+                                
+                                const img = gameState.textureCache[layer.textureUrl];
+                                ctx.globalAlpha = layer.opacity || 1;
+                                
+                                // Only draw the image if it's loaded
+                                if (img.complete) {
+                                    ctx.drawImage(img, x, y, gameState.tileSize, gameState.tileSize);
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback for tiles without layers
+                        ctx.fillStyle = getTerrainColor(tile.terrainType);
+                        ctx.fillRect(x, y, gameState.tileSize, gameState.tileSize);
+                    }
+                    
+                    // Reset opacity
+                    ctx.globalAlpha = 1;
+                    
+                    // Draw tile border
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, gameState.tileSize, gameState.tileSize);
+                }
+            }
+            
+            // Draw chunk border
+            const chunkX1 = chunkX * gameState.chunkSize * gameState.tileSize;
+            const chunkY1 = chunkY * gameState.chunkSize * gameState.tileSize;
+            const chunkSize = gameState.chunkSize * gameState.tileSize;
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(chunkX1, chunkY1, chunkSize, chunkSize);
+            
+            // Show chunk coords
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '12px Arial';
+            ctx.fillText(`${chunkX},${chunkY}`, chunkX1 + 5, chunkY1 + 15);
+        }
+        
+        function renderPlaceholderChunk(chunkX, chunkY) {
+            const x = chunkX * gameState.chunkSize * gameState.tileSize;
+            const y = chunkY * gameState.chunkSize * gameState.tileSize;
+            const size = gameState.chunkSize * gameState.tileSize;
+            
+            // Draw checkerboard pattern
+            for (let tileX = 0; tileX < gameState.chunkSize; tileX++) {
+                for (let tileY = 0; tileY < gameState.chunkSize; tileY++) {
+                    const tileX1 = x + tileX * gameState.tileSize;
+                    const tileY1 = y + tileY * gameState.tileSize;
+                    
+                    if ((tileX + tileY) % 2 === 0) {
+                        ctx.fillStyle = 'rgba(50,50,50,0.5)';
+                    } else {
+                        ctx.fillStyle = 'rgba(80,80,80,0.5)';
+                    }
+                    
+                    ctx.fillRect(tileX1, tileY1, gameState.tileSize, gameState.tileSize);
+                }
+            }
+            
+            // Draw chunk border
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, size, size);
+            
+            // Show "Click to generate" text
+            ctx.fillStyle = 'white';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Chunk ${chunkX},${chunkY}`, x + size/2, y + size/2 - 10);
+            ctx.fillText('Click to generate', x + size/2, y + size/2 + 10);
+            ctx.textAlign = 'left';
+        }
+        
+        function renderPlayers() {
+            for (const clientId in gameState.players) {
+                const player = gameState.players[clientId];
+                
+                // Simple player visualization
+                ctx.fillStyle = clientId === room.clientId ? '#4CAF50' : '#2196F3';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Player name
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(player.username, player.x, player.y - 15);
+                ctx.fillText(player.mode === 'god' ? '👑' : '🧙', player.x, player.y - 30);
+                ctx.textAlign = 'left';
+            }
+        }
+        
+        function getTerrainColor(terrainType) {
+            switch (terrainType) {
+                case 'grass': return '#4CAF50';
+                case 'water': return '#2196F3';
+                case 'mountain': return '#795548';
+                case 'forest': return '#388E3C';
+                case 'sand': return '#FFC107';
+                case 'snow': return '#ECEFF1';
+                default: return '#888888';
+            }
+        }
+        
+        // Initialize the game
+        initGame();
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
